@@ -3,7 +3,7 @@ MODEL:
   PRETRAIN_PATH: '/data3/XT/pretrain/resnet50-19c8e357.pth'
   CENTER_LOSS: 'on'
   CENTER_FEAT_DIM: 2048
-  NAME: 'resnet50_nl'
+  NAME: 'resnet50_nl_mutil'
   WEIGHT_REGULARIZED_TRIPLET: 'on'
   GENERALIZED_MEAN_POOL: 'on'
 
@@ -31,7 +31,7 @@ SOLVER:
   CENTER_LOSS_WEIGHT: 0.0005
 
   WEIGHT_DECAY: 0.0005
-  IMS_PER_BATCH: 64
+  IMS_PER_BATCH: 2
 
   STEPS: [40, 70]
   GAMMA: 0.1
@@ -52,6 +52,6 @@ TEST:
   EVALUATE_ONLY: 'off'
   PARTIAL_REID: 'off'
 
-OUTPUT_DIR: "./log/tvpr2/Experiment-AGW-baseline"
+OUTPUT_DIR: "./log/tvpr2/AGW_baseline_Mutil_1"
 
 

@@ -36,6 +36,30 @@ def create_supervised_evaluator(model, metrics, device=None):
 
     return engine
 
+def create_supervised_evaluator_mutil(cfg,model, metrics, device=None):
+    def _inference(engine, batch):
+        model.eval()
+        with torch.no_grad():
+            img_rgb, img_depth, pids, camids = batch
+            img_rgb = img_rgb.to(device) if torch.cuda.device_count() >= 1 else img_rgb
+            img_depth = img_depth.to(device) if torch.cuda.device_count() >= 1 else img_depth
+            if cfg.MODEL.NAME == 'resent_nl_oneline_rgbd':
+                img = torch.cat([img_rgb, img_depth], dim=1)
+                feat = model(img)
+            elif cfg.MODEL.NAME == 'resent_nl_twoline_rgbd_rgb':
+                img_rgbd = torch.cat([img_rgb, img_depth], dim=1)
+                feat = model(img_rgbd, img_rgb)
+            else:  # 其余的时候作为三通道输入
+                img_depth = torch.cat([img_depth, img_depth, img_depth], dim=1)
+                feat = model(img_rgb, img_depth)
+            return feat, pids, camids
+
+    engine = Engine(_inference)
+
+    for name, metric in metrics.items():
+        metric.attach(engine, name)
+
+    return engine
 
 def do_test(
         cfg,

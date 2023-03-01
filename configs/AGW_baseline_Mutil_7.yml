@@ -3,11 +3,27 @@ MODEL:
   PRETRAIN_PATH: '/data3/XT/pretrain/resnet50-19c8e357.pth'
   CENTER_LOSS: 'on'
   CENTER_FEAT_DIM: 2048
-  NAME: 'resnet50_nl'
-  WEIGHT_REGULARIZED_TRIPLET: 'on'
+  NAME: 'resent_nl_dear_twoline_sumloss'
+  WEIGHT_REGULARIZED_TRIPLET: 'off'
   GENERALIZED_MEAN_POOL: 'on'
-
 INPUT:
+  RGB:
+    SIZE_TRAIN: [ 256, 128 ]
+    SIZE_TEST: [ 256, 128 ]
+    PROB: 0.5 # random horizontal flip
+    RE_PROB: 0.5 # random erasing
+    PADDING: 10
+    PIXEL_MEAN: [
+      0.485, 0.456, 0.406 ]
+    PIXEL_STD: [ 0.229, 0.224, 0.225 ]
+  DEPTH:
+    SIZE_TRAIN: [256, 128]
+    SIZE_TEST: [256, 128]
+    PROB: 0.5 # random horizontal flip
+    RE_PROB: 0.5 # random erasing
+    PADDING: 10
+    PIXEL_MEAN: [0.5]
+    PIXEL_STD: [0.5]
   IMG_SIZE: [256, 128]
   PROB: 0.5 # random horizontal flip
   RE_PROB: 0.5 # random erasing
@@ -52,6 +68,6 @@ TEST:
   EVALUATE_ONLY: 'off'
   PARTIAL_REID: 'off'
 
-OUTPUT_DIR: "./log/tvpr2/Experiment-AGW-baseline"
-
+OUTPUT_DIR: "./log/tvpr2/AGW_baseline_oneline_dear_sumloss"
+#这个文件拿dear每一层的输出去算三重损失，最后一层才加上分类损失
 

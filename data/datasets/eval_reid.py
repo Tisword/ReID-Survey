@@ -19,6 +19,11 @@ def eval_func(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=50):
     all_AP = []
     all_INP = []
     num_valid_q = 0.  # number of valid query
+
+    # only two cameras
+    q_camids = np.ones(num_q).astype(np.int32)####query的camera都是1
+    g_camids = 2* np.ones(num_g).astype(np.int32)####gallery的camera都是2
+
     for q_idx in range(num_q):
         # get query pid and camid
         q_pid = q_pids[q_idx]

@@ -6,6 +6,10 @@ import torch
 from torch import nn
 from modeling.layer.non_local import Non_local
 
+model_urls = {
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+}
+
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -83,11 +87,11 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNetNL(nn.Module):
+class ResNetNL_RGBD(nn.Module):
     def __init__(self, last_stride=2, block=Bottleneck, layers=[3, 4, 6, 3], non_layers=[0, 2, 3, 0]):
         self.inplanes = 64
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         # self.relu = nn.ReLU(inplace=True)   # add missed relu
@@ -128,59 +132,12 @@ class ResNetNL(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward0(self,x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        # x = self.relu(x)    # add missed relu
-        x = self.maxpool(x)
-        return x
-    def forward1(self,x):
-        NL1_counter = 0
-        if len(self.NL_1_idx) == 0: self.NL_1_idx = [-1]
-        for i in range(len(self.layer1)):
-            x = self.layer1[i](x)
-            if i == self.NL_1_idx[NL1_counter]:
-                _, C, H, W = x.shape
-                x = self.NL_1[NL1_counter](x)
-                NL1_counter += 1
-        return x
-    def forward2(self,x):
-        # Layer 2
-        NL2_counter = 0
-        if len(self.NL_2_idx) == 0: self.NL_2_idx = [-1]
-        for i in range(len(self.layer2)):
-            x = self.layer2[i](x)
-            if i == self.NL_2_idx[NL2_counter]:
-                _, C, H, W = x.shape
-                x = self.NL_2[NL2_counter](x)
-                NL2_counter += 1
-        return x
-    def forward3(self,x):
-        NL3_counter = 0
-        if len(self.NL_3_idx) == 0: self.NL_3_idx = [-1]
-        for i in range(len(self.layer3)):
-            x = self.layer3[i](x)
-            if i == self.NL_3_idx[NL3_counter]:
-                _, C, H, W = x.shape
-                x = self.NL_3[NL3_counter](x)
-                NL3_counter += 1
-        return x
-    def forward4(self,x):
-        NL4_counter = 0
-        if len(self.NL_4_idx) == 0: self.NL_4_idx = [-1]
-        for i in range(len(self.layer4)):
-            x = self.layer4[i](x)
-            if i == self.NL_4_idx[NL4_counter]:
-                _, C, H, W = x.shape
-                x = self.NL_4[NL4_counter](x)
-                NL4_counter += 1
-
-        return x
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         # x = self.relu(x)    # add missed relu
         x = self.maxpool(x)
+
         NL1_counter = 0
         if len(self.NL_1_idx) == 0: self.NL_1_idx = [-1]
         for i in range(len(self.layer1)):
@@ -222,7 +179,7 @@ class ResNetNL(nn.Module):
     def load_param(self, model_path):
         param_dict = torch.load(model_path)
         for i in param_dict:
-            if 'fc' in i:
+            if 'fc' or 'conv1' in i:
                 continue
             self.state_dict()[i].copy_(param_dict[i])
 

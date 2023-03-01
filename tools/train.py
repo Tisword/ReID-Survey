@@ -9,7 +9,7 @@ from ignite.handlers import ModelCheckpoint, Timer
 from ignite.metrics import RunningAverage
 
 from utils.reid_metric import r1_mAP_mINP
-from tools.test import create_supervised_evaluator
+from tools.test import create_supervised_evaluator,create_supervised_evaluator_mutil
 
 global ITER
 ITER = 0
@@ -51,12 +51,66 @@ def create_supervised_trainer(model, optimizer, criterion, cetner_loss_weight=0.
                 param.grad.data *= (1. / cetner_loss_weight)
             optimizer['center'].step()
 
-        # compute acc
+        # compute acc  这里完全用类别去判断准确率
         acc = (score.max(1)[1] == target).float().mean()
         return loss.item(), acc.item()
 
     return Engine(_update)
 
+def create_supervised_trainer_mutil(cfg,model, optimizer, criterion, cetner_loss_weight=0.0, device=None):
+
+    def _update(engine, batch):
+        model.train()
+        optimizer['model'].zero_grad()
+
+        if 'center' in optimizer.keys():
+            optimizer['center'].zero_grad()
+
+        img_rgb,img_depth,target = batch
+        img_rgb = img_rgb.to(device) if torch.cuda.device_count() >= 1 else img_rgb
+        img_depth=img_depth.to(device) if torch.cuda.device_count() >=1 else img_depth
+        if cfg.MODEL.NAME=='resent_nl_oneline_rgbd':
+            img=torch.cat([img_rgb,img_depth],dim=1)
+            score, feat = model(img)
+        elif cfg.MODEL.NAME=='resent_nl_twoline_rgbd_rgb':
+            img_rgbd = torch.cat([img_rgb, img_depth], dim=1)
+            score, feat = model(img_rgbd, img_rgb)
+        else:#其余的时候作为三通道输入
+            img_depth = torch.cat([img_depth, img_depth, img_depth], dim=1)
+            score, feat = model(img_rgb, img_depth)
+        target = target.to(device) if torch.cuda.device_count() >= 1 else target
+
+
+        #这里判断要不要使用联合损失
+        if type(feat) is list or type(feat) is tuple:
+            loss_list = []
+            for i in range (0,len(feat)-1):
+                loss_list.append(
+                    criterion['triplet'](feat[i], target)[0]
+                )
+            loss_list.append(criterion['total'](score, feat[-1], target))
+            #最后一层算分类损失和三重损失
+            loss = sum(loss_list)
+            # compute acc  这里完全用类别去判断准确率,这里应该使用最后一个类别输出的分数
+            acc = (score.max(1)[1] == target).float().mean()
+        else:
+            loss = criterion['total'](score, feat, target)
+            # compute acc  这里完全用类别去判断准确率
+            acc = (score.max(1)[1] == target).float().mean()
+
+        loss.backward()
+        optimizer['model'].step()
+
+        if 'center' in optimizer.keys():
+            for param in criterion['center'].parameters():
+                param.grad.data *= (1. / cetner_loss_weight)
+            optimizer['center'].step()
+
+        # compute acc  这里完全用类别去判断准确率
+        # acc = (score.max(1)[1] == target).float().mean()
+        return loss.item(), acc.item()
+
+    return Engine(_update)
 
 def do_train(
         cfg,
@@ -66,7 +120,8 @@ def do_train(
         scheduler,
         criterion,
         num_query,
-        start_epoch
+        start_epoch,
+        Ismutil=False
 ):
     log_period = cfg.SOLVER.LOG_PERIOD
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
@@ -77,12 +132,17 @@ def do_train(
 
     logger = logging.getLogger("reid_baseline")
     logger.info("Start training")
-
-    trainer = create_supervised_trainer(model, optimizer, criterion, cfg.SOLVER.CENTER_LOSS_WEIGHT, device=device)
-
+    if not Ismutil:
+        trainer = create_supervised_trainer(model, optimizer, criterion, cfg.SOLVER.CENTER_LOSS_WEIGHT, device=device)
+    else:
+        trainer = create_supervised_trainer_mutil(cfg,model, optimizer, criterion, cfg.SOLVER.CENTER_LOSS_WEIGHT, device=device)
     if cfg.TEST.PARTIAL_REID == 'off':
-        evaluator = create_supervised_evaluator(model, metrics={
-            'r1_mAP_mINP': r1_mAP_mINP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
+        if not Ismutil:
+            evaluator = create_supervised_evaluator(model, metrics={
+                'r1_mAP_mINP': r1_mAP_mINP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
+        else:
+            evaluator = create_supervised_evaluator_mutil(cfg,model, metrics={
+                'r1_mAP_mINP': r1_mAP_mINP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
     else:
         evaluator_reid = create_supervised_evaluator(model,
                                                      metrics={'r1_mAP_mINP': r1_mAP_mINP(300, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)},
@@ -90,6 +150,7 @@ def do_train(
         evaluator_ilids = create_supervised_evaluator(model,
                                                       metrics={'r1_mAP_mINP': r1_mAP_mINP(119, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)},
                                                       device=device)
+    #这里定义了文件的保存格式和保存内容
     checkpointer = ModelCheckpoint(output_dir, cfg.MODEL.NAME, checkpoint_period, n_saved=10, require_empty=False)
     trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model,
                                                                      'optimizer': optimizer['model'],

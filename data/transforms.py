@@ -37,6 +37,40 @@ def build_transforms(cfg):
 
     return transforms
 
+def build_transforms_mutil(cfg):
+    transforms = {}
+    transforms['train_rgb']=T.Compose([
+        T.Resize(cfg.INPUT.RGB.SIZE_TRAIN),
+        T.RandomHorizontalFlip(p=cfg.INPUT.RGB.PROB),
+        T.Pad(cfg.INPUT.RGB.PADDING),
+        T.RandomCrop(cfg.INPUT.RGB.SIZE_TRAIN),#这一行和上面冲突
+        T.ToTensor(),
+        T.Normalize(mean=cfg.INPUT.RGB.PIXEL_MEAN, std=cfg.INPUT.RGB.PIXEL_STD),
+        # RandomErasing(probability=cfg.INPUT.RGB.RE_PROB, mode='pixel', max_count=1, device='cpu'),
+        RandomErasing(probability=cfg.INPUT.RGB.RE_PROB, mean=cfg.INPUT.RGB.PIXEL_MEAN)
+    ])
+    #处理深度图的方法，可调节
+    transforms['train_depth']=T.Compose([
+            T.Resize(cfg.INPUT.DEPTH.SIZE_TRAIN),
+            T.RandomHorizontalFlip(p=cfg.INPUT.DEPTH.PROB),
+            T.Pad(cfg.INPUT.DEPTH.PADDING),
+            T.RandomCrop(cfg.INPUT.DEPTH.SIZE_TRAIN),
+            T.ToTensor(),
+            T.Normalize(mean=cfg.INPUT.DEPTH.PIXEL_MEAN, std=cfg.INPUT.DEPTH.PIXEL_STD),
+            #RandomErasing(probability=cfg.INPUT.DEPTH.RE_PROB, mode='pixel', max_count=1, device='cpu'),
+             RandomErasing(probability=cfg.INPUT.DEPTH.RE_PROB, mean=cfg.INPUT.DEPTH.PIXEL_MEAN)
+        ])
+    transforms['eval_rgb']=T.Compose([
+        T.Resize(cfg.INPUT.RGB.SIZE_TEST),
+        T.ToTensor(),
+        T.Normalize(mean=cfg.INPUT.RGB.PIXEL_MEAN, std=cfg.INPUT.RGB.PIXEL_STD)
+    ])
+    transforms['eval_depth']=T.Compose([
+        T.Resize(cfg.INPUT.DEPTH.SIZE_TEST),
+        T.ToTensor(),
+        T.Normalize(mean=cfg.INPUT.DEPTH.PIXEL_MEAN, std=cfg.INPUT.DEPTH.PIXEL_STD)
+    ])
+    return transforms
 
 class RandomErasing(object):
     """ Randomly selects a rectangle region in an image and erases its pixels.

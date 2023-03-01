@@ -3,11 +3,28 @@ MODEL:
   PRETRAIN_PATH: '/data3/XT/pretrain/resnet50-19c8e357.pth'
   CENTER_LOSS: 'on'
   CENTER_FEAT_DIM: 2048
-  NAME: 'resnet50_nl'
+  NAME: 'resnet_nl_mutil_twoline'
   WEIGHT_REGULARIZED_TRIPLET: 'on'
   GENERALIZED_MEAN_POOL: 'on'
-
+  USEOWN_TRANSFORM : 'off'
 INPUT:
+  RGB:
+    SIZE_TRAIN: [ 256, 128 ]
+    SIZE_TEST: [ 256, 128 ]
+    PROB: 0.5 # random horizontal flip
+    RE_PROB: 0.5 # random erasing
+    PADDING: 10
+    PIXEL_MEAN: [
+      0.485, 0.456, 0.406 ]
+    PIXEL_STD: [ 0.229, 0.224, 0.225 ]
+  DEPTH:
+    SIZE_TRAIN: [256, 128]
+    SIZE_TEST: [256, 128]
+    PROB: 0.5 # random horizontal flip
+    RE_PROB: 0.5 # random erasing
+    PADDING: 10
+    PIXEL_MEAN: [0.5]
+    PIXEL_STD: [0.5]
   IMG_SIZE: [256, 128]
   PROB: 0.5 # random horizontal flip
   RE_PROB: 0.5 # random erasing
@@ -52,6 +69,6 @@ TEST:
   EVALUATE_ONLY: 'off'
   PARTIAL_REID: 'off'
 
-OUTPUT_DIR: "./log/tvpr2/Experiment-AGW-baseline"
+OUTPUT_DIR: "./log/tvpr2/AGW_baseline_Mutil_twoline_conv_CBAM_3"
 
 

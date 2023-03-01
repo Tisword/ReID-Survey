@@ -10,7 +10,7 @@ class BaseDataset(object):
 
     def get_imagedata_info(self, data):
         pids, cams = [], []
-        for _, pid, camid in data:
+        for _,_, pid, camid in data:
             pids += [pid]
             cams += [camid]
         pids = set(pids)
@@ -57,6 +57,8 @@ class BaseImageDataset(BaseDataset):
         print("  query    | {:5d} | {:8d} | {:9d}".format(num_query_pids, num_query_imgs, num_query_cams))
         print("  gallery  | {:5d} | {:8d} | {:9d}".format(num_gallery_pids, num_gallery_imgs, num_gallery_cams))
         print("  ----------------------------------------")
+
+
 
 
 class BaseVideoDataset(BaseDataset):
